@@ -1,0 +1,51 @@
+name: Deploy MySQL Updates
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install MySQL Connector for Python
+      run: pip install mysql-connector-python
+
+    - name: Run SQL Scripts
+      env:
+        MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+        MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+        MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      run: |
+        python -c "
+import mysql.connector
+from mysql.connector import Error
+
+try:
+    connection = mysql.connector.connect(
+        host='$MYSQL_HOST',
+user='$MYSQL_USERNAME',
+        password='$MYSQL_PASSWORD',
+        database='$MYSQL_DATABASE'
+    )
+    
+    cursor = connection.cursor()
+    with open('scripts/update_db.sql', 'r') as file:
+        sql_script = file.read()
+    
+    for result in cursor.execute(sql_script, multi=True):
+        print(result)
+
+except Error as e:
+    print(f'Error: {e}')
+finally:
+    if connection.is_connected():
+        cursor.close()
+        connection.close()
+"
